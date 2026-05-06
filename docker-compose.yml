@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  # Microservices
+  product-service:
+    build: ./microservices/product-service
+    ports:
+      - "3002:3002"
+    networks:
+      - app-network
+
+  order-service:
+    build: ./microservices/order-service
+    ports:
+      - "3003:3003"
+    networks:
+      - app-network
+
+  # BFF
+  bff:
+    build: ./bff
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - PRODUCT_SERVICE_URL=http://product-service:3002
+      - ORDER_SERVICE_URL=http://order-service:3003
+      - JWT_SECRET=your-secret-key
+      - FRONTEND_URL=http://localhost
+    depends_on:
+      - product-service
+      - order-service
+    networks:
+      - app-network
+
+  # Frontend (served by nginx)
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - bff
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
