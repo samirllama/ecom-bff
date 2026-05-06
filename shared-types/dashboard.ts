@@ -43,7 +43,13 @@ export interface Product {
 }
 
 // ---------- Orders ----------
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export enum OrderStatus {
+  Pending = 'pending',
+  Processing = 'processing',
+  Shipped = 'shipped',
+  Delivered = 'delivered',
+  Cancelled = 'cancelled'
+}
 
 export interface OrderProduct {
   productId: string;

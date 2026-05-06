@@ -1,6 +1,6 @@
 // frontend/src/hooks/useProducts.ts
 import { useState, useEffect, useCallback } from 'react';
-import { Product } from '../types/dashboard';
+import { Product } from '@shared/dashboard';
 import { apiService } from '../services/api';
 
 interface UseProductsOptions {
@@ -19,8 +19,16 @@ export const useProducts = (options: UseProductsOptions = {}) => {
         try {
             setLoading(true);
             const response = await apiService.getProducts(options);
-            setProducts(response.products);
-            setTotal(response.total);
+            // Assuming response structure is { products: Product[], total: number }
+            // If the BFF returns just an array, we might need to adjust this.
+            // Based on apiService.getProducts, it returns 'data'.
+            if (Array.isArray(response)) {
+                setProducts(response);
+                setTotal(response.length);
+            } else {
+                setProducts(response.products || []);
+                setTotal(response.total || 0);
+            }
             setError(null);
         } catch (err) {
             setError('Failed to fetch products');

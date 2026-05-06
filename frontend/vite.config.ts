@@ -16,4 +16,11 @@ export default defineConfig({
       '/api': 'http://localhost:3001',
     },
   },
+  // @ts-ignore
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    css: true,
+  },
 });

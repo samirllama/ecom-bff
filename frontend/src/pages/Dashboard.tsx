@@ -20,6 +20,7 @@ import {
   Bar,
 } from "recharts";
 import { useDashboard } from "../hooks/useDashboard";
+import { OrderStatus } from "@shared/dashboard";
 
 const StatCard: React.FC<{
   title: string;
@@ -176,11 +177,13 @@ const Dashboard: React.FC = () => {
                           variant="body2"
                           style={{
                             color:
-                              order.status === "completed"
+                              order.status === OrderStatus.Delivered
                                 ? "green"
-                                : order.status === "pending"
+                                : order.status === OrderStatus.Pending || order.status === OrderStatus.Processing
                                   ? "orange"
-                                  : "red",
+                                  : order.status === OrderStatus.Shipped
+                                    ? "blue"
+                                    : "red",
                           }}
                         >
                           {order.status}
