@@ -1,15 +1,13 @@
-FROM node:18-alpine AS builder
+FROM golang:1.22-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+COPY go.mod ./
+# COPY go.sum ./ # Not present yet
+RUN go mod download
 COPY . .
-RUN npm run build   # tsc
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/server/main.go
 
-FROM node:18-alpine
+FROM alpine:latest
 WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY package*.json ./
-RUN npm ci --only=production
+COPY --from=builder /app/main .
 EXPOSE 3002
-USER node
-CMD ["node", "dist/server.js"]
+CMD ["./main"]
