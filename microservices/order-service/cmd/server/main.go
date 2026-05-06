@@ -12,7 +12,12 @@ import (
 )
 
 func main() {
-	s := store.NewMemoryStore()
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL environment variable is required")
+	}
+
+	s := store.NewPostgresStore(dbURL)
 	svc := service.NewOrderService(s)
 	h := handler.NewOrderHandler(svc)
 
