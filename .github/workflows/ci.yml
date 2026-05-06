@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install dependencies
+        run: cd frontend && pnpm install --frozen-lockfile
+      - name: Lint
+        run: cd frontend && pnpm run lint
+      - name: Test
+        run: cd frontend && pnpm run test -- --run
+      - name: Build
+        run: cd frontend && pnpm run build
+
+  test-bff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+          cache-dependency-path: bff/pnpm-lock.yaml
+      - name: Install dependencies
+        run: cd bff && pnpm install --frozen-lockfile
+      - name: Build (Type Check)
+        run: cd bff && pnpm run build
+
+  test-go-services:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [product-service, order-service, user-service]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: microservices/${{ matrix.service }}/go.mod
+      - name: Test
+        run: cd microservices/${{ matrix.service }} && go test ./...
+      - name: Build
+        run: cd microservices/${{ matrix.service }} && go build -v ./cmd/server/main.go
