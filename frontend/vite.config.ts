@@ -5,6 +5,9 @@ import path from 'path';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env.NODE_ENV': '"test"',
+  },
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, '../shared-types'),
@@ -22,5 +25,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    deps: {
+      inline: ['html-encoding-sniffer', '@exodus/bytes'],
+    },
   },
 });
