@@ -1,20 +1,13 @@
 import axios from 'axios';
-import { Order } from '../types/dashboard';
+import { Order, OrdersResponse } from '@shared/dashboard';
 import { logger } from '../utils/logger';
 
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3003';
 
-interface OrdersResponse {
-    orders: Order[];
-    total: number;
-    page: number;
-    totalPages: number;
-}
-
 export class OrderService {
     async getOrderCount(): Promise<number> {
         try {
-            const response = await axios.get(`${ORDER_SERVICE_URL}/orders/count`);
+            const response = await axios.get<{ count: number }>(`${ORDER_SERVICE_URL}/orders/count`);
             return response.data.count;
         } catch (error) {
             logger.error('Error fetching order count:', error);
@@ -36,7 +29,7 @@ export class OrderService {
 
     async getRevenueData(days: number = 30): Promise<any[]> {
         try {
-            const response = await axios.get(`${ORDER_SERVICE_URL}/orders/revenue`, {
+            const response = await axios.get<any[]>(`${ORDER_SERVICE_URL}/orders/revenue`, {
                 params: { days },
             });
             return response.data;
@@ -46,7 +39,7 @@ export class OrderService {
         }
     }
 
-    async getOrders(filters?: any): Promise<OrdersResponse> {
+    async getOrders(filters?: Record<string, any>): Promise<OrdersResponse> {
         try {
             const response = await axios.get<OrdersResponse>(`${ORDER_SERVICE_URL}/orders`, {
                 params: filters,

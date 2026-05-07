@@ -1,20 +1,13 @@
 import axios from 'axios';
-import { Product } from '../types/dashboard';
+import { Product, ProductsResponse } from '@shared/dashboard';
 import { logger } from '../utils/logger';
 
 const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || 'http://localhost:3002';
 
-interface ProductsResponse {
-    products: Product[];
-    total: number;
-    page: number;
-    totalPages: number;
-}
-
 export class ProductService {
     async getProductCount(): Promise<number> {
         try {
-            const response = await axios.get(`${PRODUCT_SERVICE_URL}/products/count`);
+            const response = await axios.get<{ count: number }>(`${PRODUCT_SERVICE_URL}/products/count`);
             return response.data.count;
         } catch (error) {
             logger.error('Error fetching product count:', error);
@@ -34,7 +27,7 @@ export class ProductService {
         }
     }
 
-    async getProducts(filters?: any): Promise<ProductsResponse> {
+    async getProducts(filters?: Record<string, any>): Promise<ProductsResponse> {
         try {
             const response = await axios.get<ProductsResponse>(`${PRODUCT_SERVICE_URL}/products`, {
                 params: filters,
