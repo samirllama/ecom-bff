@@ -1,5 +1,22 @@
 // shared/dashboard.ts
 
+
+// ---------- Orders ----------
+export enum OrderStatus {
+  Pending = 'pending',
+  Processing = 'processing',
+  Shipped = 'shipped',
+  Delivered = 'delivered',
+  Cancelled = 'cancelled'
+}
+
+export interface OrderProduct {
+  productId: string;
+  productName: string;
+  quantity: number;
+  price: number;
+}
+
 export interface Order {
   id: string;
   customerName: string;
@@ -15,6 +32,7 @@ export interface OrdersResponse {
   page: number;
   totalPages: number;
 }
+
 
 export interface Product {
   id: string;
