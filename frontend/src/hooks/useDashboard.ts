@@ -8,13 +8,16 @@ export const useDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchDashboard = useCallback(async () => {
+    const fetchDashboard = useCallback(async (signal?: AbortSignal) => {
         try {
             setLoading(true);
-            const summary = await apiService.getDashboardSummary();
+            const summary = await apiService.getDashboardSummary(signal);
             setData(summary);
             setError(null);
-        } catch (err) {
+        } catch (err: any) {
+            if (err.name === 'CanceledError' || err.name === 'AbortError') {
+                return;
+            }
             setError('Failed to fetch dashboard data');
             console.error('Dashboard fetch error:', err);
         } finally {
@@ -23,8 +26,13 @@ export const useDashboard = () => {
     }, []);
 
     useEffect(() => {
-        fetchDashboard();
+        const controller = new AbortController();
+        fetchDashboard(controller.signal);
+
+        return () => {
+            controller.abort();
+        };
     }, [fetchDashboard]);
 
-    return { data, loading, error, refetch: fetchDashboard };
+    return { data, loading, error, refetch: () => fetchDashboard() };
 };

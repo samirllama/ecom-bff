@@ -15,13 +15,11 @@ export const useProducts = (options: UseProductsOptions = {}) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchProducts = useCallback(async () => {
+    const fetchProducts = useCallback(async (signal?: AbortSignal) => {
         try {
             setLoading(true);
-            const response = await apiService.getProducts(options);
+            const response = await apiService.getProducts(options, signal);
             // Assuming response structure is { products: Product[], total: number }
-            // If the BFF returns just an array, we might need to adjust this.
-            // Based on apiService.getProducts, it returns 'data'.
             if (Array.isArray(response)) {
                 setProducts(response);
                 setTotal(response.length);
@@ -30,7 +28,10 @@ export const useProducts = (options: UseProductsOptions = {}) => {
                 setTotal(response.total || 0);
             }
             setError(null);
-        } catch (err) {
+        } catch (err: any) {
+            if (err.name === 'CanceledError' || err.name === 'AbortError') {
+                return;
+            }
             setError('Failed to fetch products');
             console.error('Products fetch error:', err);
         } finally {
@@ -39,8 +40,13 @@ export const useProducts = (options: UseProductsOptions = {}) => {
     }, [options.category, options.page, options.limit]);
 
     useEffect(() => {
-        fetchProducts();
+        const controller = new AbortController();
+        fetchProducts(controller.signal);
+
+        return () => {
+            controller.abort();
+        };
     }, [fetchProducts]);
 
-    return { products, total, loading, error, refetch: fetchProducts };
+    return { products, total, loading, error, refetch: () => fetchProducts() };
 };

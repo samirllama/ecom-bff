@@ -40,43 +40,43 @@ class ApiService {
         );
     }
 
-    async getDashboardSummary(): Promise<DashboardSummary> {
-        const { data } = await this.api.get('/dashboard/summary');
+    async getDashboardSummary(signal?: AbortSignal): Promise<DashboardSummary> {
+        const { data } = await this.api.get('/dashboard/summary', { signal });
         return data;
     }
 
-    async getProducts(filters?: { category?: string; page?: number; limit?: number }) {
-        const { data } = await this.api.get('/products', { params: filters });
+    async getProducts(filters?: { category?: string; page?: number; limit?: number }, signal?: AbortSignal) {
+        const { data } = await this.api.get('/products', { params: filters, signal });
         return data;
     }
 
-    async getProductById(id: string): Promise<Product> {
-        const { data } = await this.api.get(`/products/${id}`);
+    async getProductById(id: string, signal?: AbortSignal): Promise<Product> {
+        const { data } = await this.api.get(`/products/${id}`, { signal });
         return data;
     }
 
-    async createProduct(product: Omit<Product, 'id'>): Promise<Product> {
-        const { data } = await this.api.post('/products', product);
+    async createProduct(product: Omit<Product, 'id'>, signal?: AbortSignal): Promise<Product> {
+        const { data } = await this.api.post('/products', product, { signal });
         return data;
     }
 
-    async updateProduct(id: string, product: Partial<Product>): Promise<Product> {
-        const { data } = await this.api.put(`/products/${id}`, product);
+    async updateProduct(id: string, product: Partial<Product>, signal?: AbortSignal): Promise<Product> {
+        const { data } = await this.api.put(`/products/${id}`, product, { signal });
         return data;
     }
 
-    async getOrders(filters?: { status?: string; page?: number }) {
-        const { data } = await this.api.get('/orders', { params: filters });
+    async getOrders(filters?: { status?: string; page?: number }, signal?: AbortSignal) {
+        const { data } = await this.api.get('/orders', { params: filters, signal });
         return data;
     }
 
-    async getOrderById(id: string): Promise<Order> {
-        const { data } = await this.api.get(`/orders/${id}`);
+    async getOrderById(id: string, signal?: AbortSignal): Promise<Order> {
+        const { data } = await this.api.get(`/orders/${id}`, { signal });
         return data;
     }
 
-    async updateOrderStatus(id: string, status: string): Promise<Order> {
-        const { data } = await this.api.patch(`/orders/${id}/status`, { status });
+    async updateOrderStatus(id: string, status: string, signal?: AbortSignal): Promise<Order> {
+        const { data } = await this.api.patch(`/orders/${id}/status`, { status }, { signal });
         return data;
     }
 }

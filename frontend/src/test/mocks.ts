@@ -1,28 +1,21 @@
 import { DashboardSummary, Product, Order, OrderStatus } from '@shared/dashboard';
 
 export const mockProduct = (overrides?: Partial<Product>): Product => ({
-  id: 'prod-1',
+  id: '1',
   name: 'Test Product',
-  price: 99.99,
-  stock: 50,
-  category: 'Electronics',
-  image: 'test-image.jpg',
-  description: 'Test Description',
+  price: 9.99,
+  stock: 10,
+  category: 'Test',
+  salesCount: 5,
+  revenue: 49.95,
+  image: '/test.jpg',
+  description: 'A test product.',
   ...overrides,
 });
 
 export const mockOrder = (overrides?: Partial<Order>): Order => ({
   id: 'ord-1',
-  customerId: 'cust-1',
   customerName: 'John Doe',
-  products: [
-    {
-      productId: 'prod-1',
-      productName: 'Test Product',
-      quantity: 1,
-      price: 99.99,
-    },
-  ],
   totalAmount: 99.99,
   status: OrderStatus.Pending,
   createdAt: new Date().toISOString(),

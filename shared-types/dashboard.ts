@@ -37,14 +37,14 @@ export interface OrdersResponse {
 export interface Product {
   id: string;
   name: string;
-  price: number;                   // DECIMAL(10,2)
+  price: number;                  // DECIMAL(10,2)
   stock: number;
   category: string;
-  salesCount: number;             // sales_count DEFAULT 0
-  revenue: number;                // revenue DEFAULT 0
-  image?: string;                 // nullable TEXT column
+  salesCount: number;            // sales_count DEFAULT 0
+  revenue: number;               // revenue DEFAULT 0
+  image?: string;                // nullable TEXT
+  description?: string;          // <-- new, nullable TEXT
 }
-
 export interface ProductsResponse {
   products: Product[];
   total: number;
