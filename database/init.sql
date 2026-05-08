@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS products (
     category TEXT NOT NULL,
     sales_count INTEGER DEFAULT 0,
     revenue DECIMAL(15, 2) DEFAULT 0,
-    description TEXT
+    description TEXT,
     image TEXT
 );
 

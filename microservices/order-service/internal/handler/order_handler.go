@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/samirllama/ecom-bff/order-service/internal/model"
 	"github.com/samirllama/ecom-bff/order-service/internal/service"
 )
 
@@ -30,64 +29,49 @@ func (h *OrderHandler) Recent(w http.ResponseWriter, r *http.Request) {
 			limit = l
 		}
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.service.GetRecent(limit))
+	json.NewEncoder(w).Encode(h.service.GetRecentOrders(limit))
 }
 
 func (h *OrderHandler) Revenue(w http.ResponseWriter, r *http.Request) {
+	daysStr := r.URL.Query().Get("days")
+	days := 30
+	if daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil {
+			days = d
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.service.GetRevenueData())
-}
-
-type OrdersResponse struct {
-	Orders     []model.Order `json:"orders"`
-	Total      int           `json:"total"`
-	Page       int           `json:"page"`
-	TotalPages int           `json:"totalPages"`
+	json.NewEncoder(w).Encode(h.service.GetRevenueData(days))
 }
 
 func (h *OrderHandler) List(w http.ResponseWriter, r *http.Request) {
-	status := r.URL.Query().Get("status")
 	pageStr := r.URL.Query().Get("page")
 	limitStr := r.URL.Query().Get("limit")
-
 	page, _ := strconv.Atoi(pageStr)
 	if page <= 0 {
 		page = 1
 	}
-
 	limit, _ := strconv.Atoi(limitStr)
 	if limit <= 0 {
 		limit = 10
 	}
-
-	orders, total := h.service.List(status, page, limit)
-	totalPages := (total + limit - 1) / limit
-
-	resp := OrdersResponse{
-		Orders:     orders,
-		Total:      total,
-		Page:       page,
-		TotalPages: totalPages,
-	}
-
+	resp := h.service.GetOrders(page, limit)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
 
 func (h *OrderHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	o, ok := h.service.GetByID(id)
-	if !ok {
+	order, found := h.service.GetOrderByID(id)
+	if !found {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Order not found"})
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(o)
+	json.NewEncoder(w).Encode(order)
 }
 
 func (h *OrderHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
@@ -96,18 +80,16 @@ func (h *OrderHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		Status string `json:"status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	o, ok := h.service.UpdateStatus(id, body.Status)
-	if !ok {
+	order, err := h.service.UpdateOrderStatus(id, body.Status)
+	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Order not found"})
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(o)
+	json.NewEncoder(w).Encode(order)
 }

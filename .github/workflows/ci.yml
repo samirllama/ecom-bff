@@ -61,4 +61,4 @@ jobs:
       - name: Test
         run: cd microservices/${{ matrix.service }} && go test ./...
       - name: Build
-        run: cd microservices/${{ matrix.service }} && go build -v ./cmd/server/main.go
+        run: cd microservices/${{ matrix.service }} && go build -v .

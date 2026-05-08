@@ -7,31 +7,32 @@ import {
   Typography,
   Box,
   Skeleton,
-} from "@mui/material";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  Alert,
   Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from "recharts";
+} from "@mui/material";
+import { WarningAmber } from "@mui/icons-material";
+import { TopProduct } from "@shared/dashboard";
 import { useDashboard } from "../hooks/useDashboard";
-import { OrderStatus } from "@shared/dashboard";
 
+// StatCard now accepts an optional 'warning' prop
 const StatCard: React.FC<{
   title: string;
   value: string | number;
   loading?: boolean;
-}> = ({ title, value, loading }) => (
+  warning?: boolean;
+}> = ({ title, value, loading, warning }) => (
   <Card>
     <CardContent>
-      <Typography color="textSecondary" gutterBottom>
-        {title}
-      </Typography>
+      <Box display="flex" alignItems="center" gap={1}>
+        <Typography color="textSecondary" gutterBottom>
+          {title}
+        </Typography>
+        {warning && (
+          <Tooltip title="This data might be outdated or unavailable">
+            <WarningAmber color="warning" fontSize="small" />
+          </Tooltip>
+        )}
+      </Box>
       {loading ? (
         <Skeleton variant="text" width={100} height={40} />
       ) : (
@@ -43,21 +44,51 @@ const StatCard: React.FC<{
   </Card>
 );
 
-const Dashboard: React.FC = () => {
-  const { data, loading, error } = useDashboard();
+const TopProductsList: React.FC<{
+  products: TopProduct[];
+  loading: boolean;
+}> = ({ products, loading }) => (
+  <Card>
+    <CardContent>
+      <Typography variant="h6">Top Products</Typography>
+      {loading ? (
+        <Skeleton variant="rectangular" height={200} />
+      ) : products.length === 0 ? (
+        <Typography color="textSecondary">No product data available</Typography>
+      ) : (
+        products.map((p) => (
+          <Box key={p.id} display="flex" justifyContent="space-between" my={1}>
+            <Typography>{p.name}</Typography>
+            <Typography>{p.sales} sold</Typography>
+          </Box>
+        ))
+      )}
+    </CardContent>
+  </Card>
+);
 
-  if (error) {
+const Dashboard: React.FC = () => {
+  const { data, loading, globalError, refetch } = useDashboard();
+
+  if (globalError) {
     return (
       <Box p={3}>
-        <Typography color="error">Error: {error}</Typography>
+        <Alert
+          severity="error"
+          action={<button onClick={refetch}>Retry</button>}
+        >
+          {globalError}
+        </Alert>
       </Box>
     );
   }
 
+  const sources = data?.sources || {};
+
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        Dashboard
+        Live Dashboard
       </Typography>
 
       <Grid container spacing={3} mb={4}>
@@ -66,6 +97,7 @@ const Dashboard: React.FC = () => {
             title="Total Products"
             value={data?.totalProducts ?? 0}
             loading={loading}
+            warning={sources.productCount === "error"}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -73,13 +105,15 @@ const Dashboard: React.FC = () => {
             title="Total Orders"
             value={data?.totalOrders ?? 0}
             loading={loading}
+            warning={sources.allOrders === "error"}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Total Revenue"
-            value={`$${(data?.totalRevenue ?? 0).toLocaleString()}`}
+            value={`$${data?.totalRevenue.toLocaleString() ?? 0}`}
             loading={loading}
+            warning={sources.revenueData === "error"}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
@@ -87,115 +121,19 @@ const Dashboard: React.FC = () => {
             title="Active Users"
             value={data?.activeUsers ?? 0}
             loading={loading}
+            warning={sources.activeUsers === "error"}
           />
         </Grid>
       </Grid>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Revenue Trend
-              </Typography>
-              {loading ? (
-                <Skeleton variant="rectangular" height={300} />
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={data?.revenueChart}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#8884d8"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+        <Grid item xs={12} md={6}>
+          <TopProductsList
+            products={data?.topProducts ?? []}
+            loading={loading}
+          />
         </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Top Products
-              </Typography>
-              {loading ? (
-                <Skeleton variant="rectangular" height={300} />
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={data?.topProducts}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="sales" fill="#82ca9d" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Recent Orders
-              </Typography>
-              {loading ? (
-                <Skeleton variant="rectangular" height={200} />
-              ) : (
-                <Box>
-                  {data?.recentOrders.map((order) => (
-                    <Box
-                      key={order.id}
-                      display="flex"
-                      justifyContent="space-between"
-                      p={2}
-                      borderBottom="1px solid #eee"
-                    >
-                      <Box>
-                        <Typography variant="body1">
-                          {order.customerName}
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {new Date(order.date).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                      <Box textAlign="right">
-                        <Typography variant="body1">
-                          ${order.amount.toFixed(2)}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          style={{
-                            color:
-                              order.status === OrderStatus.Delivered
-                                ? "green"
-                                : order.status === OrderStatus.Pending || order.status === OrderStatus.Processing
-                                  ? "orange"
-                                  : order.status === OrderStatus.Shipped
-                                    ? "blue"
-                                    : "red",
-                          }}
-                        >
-                          {order.status}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+        {/* Add recent orders, revenue chart, etc. */}
       </Grid>
     </Box>
   );

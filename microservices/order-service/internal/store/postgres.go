@@ -2,10 +2,10 @@ package store
 
 import (
 	"database/sql"
-	"log"
-	"time"
+	"fmt"
+	"math"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/lib/pq"
 	"github.com/samirllama/ecom-bff/order-service/internal/model"
 )
 
@@ -13,97 +13,135 @@ type PostgresStore struct {
 	db *sql.DB
 }
 
-func NewPostgresStore(databaseURL string) *PostgresStore {
-	var db *sql.DB
-	var err error
-
-	for i := 0; i < 10; i++ {
-		db, err = sql.Open("pgx", databaseURL)
-		if err == nil {
-			if err = db.Ping(); err == nil {
-				return &PostgresStore{db: db}
-			}
-		}
-		log.Printf("Failed to connect to database, retrying in 2s... (%d/10)\n", i+1)
-		time.Sleep(2 * time.Second)
+func NewPostgresStore(connStr string) (*PostgresStore, error) {
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open db: %w", err)
 	}
-
-	log.Fatalf("Unable to connect to database after 10 attempts: %v\n", err)
-	return nil
+	if err = db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping db: %w", err)
+	}
+	return &PostgresStore{db: db}, nil
 }
 
-func (s *PostgresStore) GetAll() []model.Order {
-	rows, err := s.db.Query("SELECT id, customer_name, total_amount, status, shipping_address, created_at FROM orders")
+func (s *PostgresStore) Close() error {
+	return s.db.Close()
+}
+
+func (s *PostgresStore) GetOrderCount() (int, error) {
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM orders").Scan(&count)
+	return count, err
+}
+
+func (s *PostgresStore) GetRecentOrders(limit int) ([]model.Order, error) {
+	rows, err := s.db.Query("SELECT id, customer_name, total_amount, status, COALESCE(shipping_address,''), created_at FROM orders ORDER BY created_at DESC LIMIT $1", limit)
 	if err != nil {
-		log.Printf("Error querying orders: %v\n", err)
-		return []model.Order{}
+		return nil, err
 	}
 	defer rows.Close()
 
 	var orders []model.Order
 	for rows.Next() {
 		var o model.Order
-		var createdAt sql.NullTime
-		err := rows.Scan(&o.ID, &o.CustomerName, &o.TotalAmount, &o.Status, &o.ShippingAddress, &createdAt)
-		if err != nil {
-			log.Printf("Error scanning order: %v\n", err)
-			continue
+		if err := rows.Scan(&o.ID, &o.CustomerName, &o.TotalAmount, &o.Status, &o.ShippingAddress, &o.CreatedAt); err != nil {
+			return nil, err
 		}
-		if createdAt.Valid {
-			o.CreatedAt = createdAt.Time.Format("2006-01-02T15:04:05Z")
-		}
-		o.Products = s.getOrderItems(o.ID)
 		orders = append(orders, o)
 	}
-	return orders
+	return orders, rows.Err()
 }
 
-func (s *PostgresStore) getOrderItems(orderID string) []model.OrderProduct {
-	rows, err := s.db.Query("SELECT product_id, product_name, quantity, price FROM order_items WHERE order_id = $1", orderID)
+func (s *PostgresStore) GetRevenueData(days int) ([]model.RevenueItem, error) {
+	rows, err := s.db.Query(`
+		SELECT TO_CHAR(DATE(created_at), 'YYYY-MM-DD') as date,
+		       COALESCE(SUM(total_amount),0) as revenue,
+		       COUNT(*) as orders
+		FROM orders
+		WHERE created_at >= CURRENT_DATE - $1::integer
+		GROUP BY DATE(created_at)
+		ORDER BY DATE(created_at) ASC`, days)
 	if err != nil {
-		log.Printf("Error querying order items for %s: %v\n", orderID, err)
-		return []model.OrderProduct{}
+		return nil, err
 	}
 	defer rows.Close()
 
-	var items []model.OrderProduct
+	var items []model.RevenueItem
 	for rows.Next() {
-		var i model.OrderProduct
-		err := rows.Scan(&i.ProductID, &i.ProductName, &i.Quantity, &i.Price)
-		if err != nil {
-			log.Printf("Error scanning order item: %v\n", err)
-			continue
+		var item model.RevenueItem
+		if err := rows.Scan(&item.Date, &item.Revenue, &item.OrderCount); err != nil {
+			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, item)
 	}
-	return items
+	return items, rows.Err()
 }
 
-func (s *PostgresStore) GetByID(id string) (model.Order, bool) {
+func (s *PostgresStore) GetOrders(page, limit int, filters map[string]interface{}) (*model.OrdersResponse, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+
+	// For now, filters are ignored. Extend later as needed.
+	var total int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM orders").Scan(&total)
+	if err != nil {
+		return nil, err
+	}
+
+	offset := (page - 1) * limit
+	rows, err := s.db.Query(
+		"SELECT id, customer_name, total_amount, status, COALESCE(shipping_address,''), created_at FROM orders ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+		limit, offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []model.Order
+	for rows.Next() {
+		var o model.Order
+		if err := rows.Scan(&o.ID, &o.CustomerName, &o.TotalAmount, &o.Status, &o.ShippingAddress, &o.CreatedAt); err != nil {
+			return nil, err
+		}
+		orders = append(orders, o)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+	return &model.OrdersResponse{
+		Orders:     orders,
+		Total:      total,
+		Page:       page,
+		TotalPages: totalPages,
+	}, nil
+}
+
+func (s *PostgresStore) GetOrderByID(id string) (model.Order, bool, error) {
 	var o model.Order
-	var createdAt sql.NullTime
-	err := s.db.QueryRow("SELECT id, customer_name, total_amount, status, shipping_address, created_at FROM orders WHERE id = $1", id).
-		Scan(&o.ID, &o.CustomerName, &o.TotalAmount, &o.Status, &o.ShippingAddress, &createdAt)
-
+	err := s.db.QueryRow("SELECT id, customer_name, total_amount, status, COALESCE(shipping_address,''), created_at FROM orders WHERE id=$1", id).
+		Scan(&o.ID, &o.CustomerName, &o.TotalAmount, &o.Status, &o.ShippingAddress, &o.CreatedAt)
 	if err == sql.ErrNoRows {
-		return model.Order{}, false
+		return o, false, nil
 	}
 	if err != nil {
-		log.Printf("Error querying order %s: %v\n", id, err)
-		return model.Order{}, false
+		return o, false, err
 	}
-	if createdAt.Valid {
-		o.CreatedAt = createdAt.Time.Format("2006-01-02T15:04:05Z")
-	}
-	o.Products = s.getOrderItems(o.ID)
-	return o, true
+	return o, true, nil
 }
 
-func (s *PostgresStore) UpdateStatus(id, status string) (model.Order, bool) {
-	_, err := s.db.Exec("UPDATE orders SET status = $1 WHERE id = $2", status, id)
+func (s *PostgresStore) UpdateOrderStatus(id, status string) (model.Order, error) {
+	var o model.Order
+	err := s.db.QueryRow("UPDATE orders SET status=$1 WHERE id=$2 RETURNING id, customer_name, total_amount, status, COALESCE(shipping_address,''), created_at", status, id).
+		Scan(&o.ID, &o.CustomerName, &o.TotalAmount, &o.Status, &o.ShippingAddress, &o.CreatedAt)
 	if err != nil {
-		log.Printf("Error updating order %s status: %v\n", id, err)
-		return model.Order{}, false
+		return o, err
 	}
-	return s.GetByID(id)
+	return o, nil
 }

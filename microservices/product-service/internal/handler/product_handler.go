@@ -30,7 +30,6 @@ func (h *ProductHandler) Top(w http.ResponseWriter, r *http.Request) {
 			limit = l
 		}
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(h.service.GetTop(limit))
 }
@@ -51,7 +50,6 @@ func (h *ProductHandler) List(w http.ResponseWriter, r *http.Request) {
 	if page <= 0 {
 		page = 1
 	}
-
 	limit, _ := strconv.Atoi(limitStr)
 	if limit <= 0 {
 		limit = 10
@@ -59,6 +57,9 @@ func (h *ProductHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	products, total := h.service.List(category, page, limit)
 	totalPages := (total + limit - 1) / limit
+	if totalPages < 1 {
+		totalPages = 1
+	}
 
 	resp := ProductsResponse{
 		Products:   products,
@@ -66,7 +67,6 @@ func (h *ProductHandler) List(w http.ResponseWriter, r *http.Request) {
 		Page:       page,
 		TotalPages: totalPages,
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
@@ -80,7 +80,6 @@ func (h *ProductHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": "Product not found"})
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(p)
 }
