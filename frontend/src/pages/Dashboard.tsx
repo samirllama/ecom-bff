@@ -10,7 +10,7 @@ import {
   Alert,
   Tooltip,
 } from "@mui/material";
-import { WarningAmber } from "@mui/icons-material";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { TopProduct } from "@shared/dashboard";
 import { useDashboard } from "../hooks/useDashboard";
 
@@ -29,7 +29,7 @@ const StatCard: React.FC<{
         </Typography>
         {warning && (
           <Tooltip title="This data might be outdated or unavailable">
-            <WarningAmber color="warning" fontSize="small" />
+            <WarningAmberIcon color="warning" fontSize="small" />
           </Tooltip>
         )}
       </Box>
