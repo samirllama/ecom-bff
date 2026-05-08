@@ -1,19 +1,44 @@
-// ---------- Dashboard ----------
-export interface DashboardSummary {
-  totalProducts: number;
-  totalOrders: number;
-  totalRevenue: number;
-  activeUsers: number;
-  recentOrders: RecentOrder[];
-  topProducts: TopProduct[];
-  revenueChart: RevenueData[];
+// shared/dashboard.ts
+
+export interface Order {
+  id: string;
+  customerName: string;
+  totalAmount: number;
+  status: string;
+  createdAt: string;               // ISO date string
+  shippingAddress?: string;        // maps to shipping_address
+}
+
+export interface OrdersResponse {
+  orders: Order[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;                   // DECIMAL(10,2)
+  stock: number;
+  category: string;
+  salesCount: number;             // sales_count DEFAULT 0
+  revenue: number;                // revenue DEFAULT 0
+  image?: string;                 // nullable TEXT column
+}
+
+export interface ProductsResponse {
+  products: Product[];
+  total: number;
+  page: number;
+  totalPages: number;
 }
 
 export interface RecentOrder {
   id: string;
   customerName: string;
   amount: number;
-  status: OrderStatus;
+  status: string;
   date: string;
 }
 
@@ -22,7 +47,7 @@ export interface TopProduct {
   name: string;
   sales: number;
   revenue: number;
-  image: string;
+  image: string;                 // required in dashboard output, will default to '' if missing
 }
 
 export interface RevenueData {
@@ -31,40 +56,13 @@ export interface RevenueData {
   orders: number;
 }
 
-// ---------- Products ----------
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  stock: number;
-  category: string;
-  image: string;
-  description: string;
-}
-
-// ---------- Orders ----------
-export enum OrderStatus {
-  Pending = 'pending',
-  Processing = 'processing',
-  Shipped = 'shipped',
-  Delivered = 'delivered',
-  Cancelled = 'cancelled'
-}
-
-export interface OrderProduct {
-  productId: string;
-  productName: string;
-  quantity: number;
-  price: number;
-}
-
-export interface Order {
-  id: string;
-  customerId: string;
-  customerName: string;
-  products: OrderProduct[];
-  totalAmount: number;
-  status: OrderStatus;
-  createdAt: string;
-  shippingAddress: string;
+export interface DashboardSummary {
+  totalProducts: number;
+  totalOrders: number;
+  totalRevenue: number;
+  activeUsers: number;
+  recentOrders: RecentOrder[];
+  topProducts: TopProduct[];
+  revenueChart: RevenueData[];
+  sources?: Record<string, 'ok' | 'error'>;
 }
